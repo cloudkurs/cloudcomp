@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chat Online</title>
+<!-- bootstrap 3.3.7 -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+<!-- jQuery library -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<!-- Bootstrap Js CDN -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<!-- Abgreifen der Cookies -->
+<script src="https://cdn.jsdelivr.net/npm/js-cookie@2/src/js.cookie.min.js"></script>
+
+<script src="/socket.io/socket.io.js"></script>
+<script> 
+	var socket = io("https://ptanh-chatapp.herokuapp.com");
+	//var socket = io("http://localhost:3000");
+	var userChat = null;
+
+	// show user Online List
+	socket.on("server_send_userOnlineList", function(data){
+		var index = 0;
+		while (index < data.id.length){
+    		var s = "<div socketid='" + data.id[index] + "' class='well' style='color: gray; font-weight: bold'>" + data.user[index] + "</div>";
+			$("#userOnlineList").append(s);
+    		index++;
+		}
+	});
+
+	// Alert when register fail
+	socket.on("server_send_register_fail", function(data){
+		alert ("User " + data + " is already in system");
+	});
+
+	// Get new user from list
+	socket.on("server_send_register_success", function(data){
+		var s = "<div socketid='"+data.id+"' class='well' style='color: gray; font-weight: bold'>" + data.username + "</div>";
+		$("#userOnlineList").append(s);
+	});
+
+	// hide form register when register successful
+	socket.on("server_send_register_success_close", function(data){
+		$("#txtUser").hide(3000);
+		$("#btnRegister").hide(3000);
+		userChat = data;
+	});
+
+	// show message from user
+	socket.on("server_send_message", function(data){
+		var chatLine = null;
+		if (data.username != userChat) {
+			chatLine = "<div class='well'><strong><span style='color: blue; font-weight: bold'>" + data.username + "</span>: "
+				+ "<span style='font-style: italic'>" + data.msg + "</span></div>";	
+		} else {
+			chatLine = "<div class='well'><strong><span style='color: red; font-weight: bold'>Me</span>: "
+				+ "<span style='font-style: italic'>" + data.msg + "</span></div>";
+		}
+		$("#msgList").append(chatLine + "<div class='block'></div>");
+	});
+
+	// pong user
+	socket.on("user_pong", function(data){
+		alert (data + ": BuZZZ!!!!!");
+	});
+
+	// Reset Chat room
+	socket.on("server_send_reset", function(){
+		$("#userOnlineList").empty();
+		$("#msgList").empty();
+		$("#txtUser").val("");
+		$("#txtUser").show(3000);
+		$("#btnRegister").show(3000);
+	});
+
+
+</script>
+</head>
+
+<body style="background:#d7dfed">
+	<div>
+			<nav class="navbar navbar-inverse" role="navigation" style="padding-left:100px;">
+				  <ul class="nav navbar-nav">
+					<li><a href="/">Home<span class="sr-only">(current)</span></a></li>
+					<li><a href="/about">About Us</a></li>
+				</ul>
+			</nav>
+	</div>
+	
+	<h1 style="text-align: center">DEMO CHAT SOCKET IO - CLOUDCOMPUTING - NODEJS</h1>
+	<div id="wrapper" width="600px" margin="auto">
+		<div id="GroupMember" class="container-fluid">
+			<input id="txtUser" type="text" placeholder="Username" />
+			<input id="btnRegister" class="btn btn-primary" type="button" value="Sign in" />
+			<input class="btn btn-primary" style="float:right" type="button" id="btnReset" value="Reset" />
+			<div style="width:100%; clear:both; margin:10px"></div>
+			<div class="row-eq-height">
+			<div class="col-sm-4 well" id="left" style="background-color:#eaf4b7; min-height:548px; float:left; overflow-y: scroll">	
+				<div class="well" id="title" style="color:blue; font-family:cursive; font-size:50px;  background-color: #ccf900; text-align: center; padding: 5px">Users online</div>
+				<div id="userOnlineList"></div>
+			</div>
+			<div class="col-sm-8 well" id="right" style="background-color:#d6f9d9; min-height:500px; float:right">
+				<div id="msgList" style="height: 474px; overflow: scroll; clear: both"></div>
+				<div class="block"></div>
+				<input style="width:91%" type="text" id="txtMessage" placeholder="Message..." />
+				<input class="btn btn-primary" style="width:8%; float:right" type="button" id="btnChat" value="Chat" />
+			</div>
+			</div>
+		</div>
+	</div>
+	<!-- Footer -->
+	<footer class="container-fluid bg-4 text-center">
+	<p class="bg-primary">Cloud Computing - 2018</p> 
+  	</footer>
+</body>
+<script>
+	$(document).ready(function(){
+
+		socket.emit("client_send_useronline");
+
+		$("#btnRegister").click(function(){
+			socket.emit("client_send_username", $("#txtUser").val())
+		});
+
+		$("#btnChat").click(function(){
+			socket.emit("client_send_message", $("#txtMessage").val());
+			$("#txtMessage").val("");
+		});
+
+		$("#btnReset").click(function(){
+			socket.emit("client_send_reset");
+		});
+
+		$(document).on("click", ".user", function(){
+			var id = $(this).attr("socketid");
+			socket.emit("user_ping", id);
+		});
+	});
+</script>
+</html>
